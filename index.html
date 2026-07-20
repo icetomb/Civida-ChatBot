@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civida Help — chat prototype</title>
+<style>
+/* ============================================================
+   Civida Help prototype — mobile-first chat widget.
+   Palette sampled from civida.ca's compiled theme CSS
+   (wp-content/themes/civida/dist/assets/css/app.css, 2026-07-20):
+   purple #452283 · deep ink #231142 · coral #dc5339 · amber #ffaa2d.
+   §9.4: swap these if the brand team supplies official tokens.
+   Brand font is "Eagle" (licensed webfont, not embeddable in a
+   single-file prototype) — system stacks stand in for it.
+   ============================================================ */
+:root {
+  --purple: #452283;
+  --purple-deep: #231142;
+  --ink: #2b2440;
+  --muted: #6b6478;
+  --wash: #f4f2fb;
+  --surface: #ffffff;
+  --line: #e5def2;
+  --line-strong: #d8cdee;
+  --lav: #efeaf9;
+  --coral-text: #a63d28;
+  --coral-line: #ecd4cc;
+  --coral-wash: #fbf1ee;
+  --amber: #ffaa2d;
+  --radius: 16px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--wash);
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--wash);
+}
+@media (min-width: 560px) {
+  body {
+    padding: 32px 16px;
+    background: radial-gradient(1200px 620px at 50% -12%, #ebe3fa, var(--wash));
+  }
+  .chat {
+    height: calc(100dvh - 64px);
+    max-height: 780px;
+    max-width: 460px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(69, 34, 131, 0.16);
+  }
+}
+
+/* ---- header ---- */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--purple);
+  color: #fff;
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-name {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.brand-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.hdr-btn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.hdr-btn:hover { background: rgba(255, 255, 255, 0.26); }
+.chat-header .hdr-btn:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* ---- transcript ---- */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* no scroll-behavior:smooth — staggered appends must pin instantly */
+}
+.msg { display: flex; }
+.msg-bot {
+  justify-content: flex-start;
+  position: relative;
+  padding-left: 38px;
+}
+.msg-user { justify-content: flex-end; }
+
+/* Signature: a small Civida-purple house (amber door) marks each bot turn.
+   "Life starts with a home." Pure CSS — no image assets. */
+.msg-bot.step-start::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 26px;
+  height: 23px;
+  background: var(--purple);
+  clip-path: polygon(50% 0, 100% 40%, 100% 100%, 0 100%, 0 40%);
+}
+.msg-bot.step-start::after {
+  content: "";
+  position: absolute;
+  left: 9.5px;
+  top: 16px;
+  width: 7px;
+  height: 11px;
+  background: var(--amber);
+  border-radius: 3.5px 3.5px 0 0;
+}
+
+.bubble {
+  max-width: 92%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  border-bottom-left-radius: 5px;
+  padding: 11px 14px;
+  animation: rise 0.22s ease-out;
+}
+.bubble-text {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 16.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+.bubble-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.link-pill {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--purple-deep);
+  background: var(--lav);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.link-pill:hover { background: #e5dcf6; }
+a.link-pill[target="_blank"]::after { content: " ↗"; font-weight: 400; }
+.chip {
+  max-width: 85%;
+  background: var(--purple);
+  color: #fff;
+  border-radius: var(--radius);
+  border-bottom-right-radius: 5px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 15px;
+  animation: rise 0.22s ease-out;
+}
+
+/* ---- quick replies ---- */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 10px 38px;
+  outline: none;
+}
+.opt {
+  font-family: var(--sans);
+  font: inherit;
+  text-align: left;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  animation: rise 0.22s ease-out;
+}
+.opt:hover { background: var(--lav); border-color: var(--purple); }
+.opt:active { background: #e5dcf6; }
+.opt-label {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--purple-deep);
+}
+.opt-sub {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.opt-card { padding: 13px 14px; }
+.opt-escape { border-color: var(--coral-line); }
+.opt-escape:hover { background: var(--coral-wash); border-color: var(--coral-text); }
+.opt-escape .opt-label { color: var(--coral-text); }
+
+/* ---- footer ---- */
+.chat-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.chat-footer .hdr-btn {
+  color: var(--purple-deep);
+  background: var(--lav);
+  border-color: var(--line-strong);
+}
+.chat-footer .hdr-btn:hover { background: #e5dcf6; }
+.chat-footer .hdr-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chat-footer .hdr-btn:disabled:hover { background: var(--lav); }
+.disclaimer {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+button:focus-visible, a:focus-visible {
+  outline: 3px solid var(--purple-deep);
+  outline-offset: 2px;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble, .chip, .opt { animation: none; }
+}
+
+/* ---- small phones (320px) ---- */
+@media (max-width: 340px) {
+  body { font-size: 15px; }
+  .messages { padding: 12px 10px 6px; }
+  .msg-bot { padding-left: 30px; }
+  .options { padding-left: 30px; }
+  .msg-bot.step-start::before { width: 22px; height: 20px; top: 5px; }
+  .msg-bot.step-start::after { left: 8px; top: 16px; width: 6px; height: 9px; }
+  .bubble { max-width: 96%; }
+  .bubble-text { font-size: 15.5px; }
+  .brand-name { font-size: 17px; }
+  .disclaimer { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<main class="chat" aria-label="Civida Help chat">
+  <header class="chat-header">
+    <div class="brand"><span class="brand-name">Civida</span><span class="brand-tag">Help</span></div>
+    <button type="button" id="btn-restart" class="hdr-btn">⟲ Start over</button>
+  </header>
+  <div id="messages" class="messages" role="log" aria-live="polite"></div>
+  <footer class="chat-footer">
+    <button type="button" id="btn-back" class="hdr-btn" disabled>‹ Back</button>
+    <p class="disclaimer">Prototype — wording is draft, pending Customer Success review.</p>
+  </footer>
+</main>
+<script id="core">
+/* ============================================================
+   CIVIDA HELP — CONTENT (edit this object to change the bot)
+   This script block is DOM-free: it is also loaded by the
+   Node tests (tests/core.test.mjs). Keep browser APIs out.
+   ============================================================ */
+var CONTENT = {
+  meta: {
+    title: "Civida Help",
+    greeting: "Hi! I can point you to the right answer fast.",
+    restart: "No problem — let's start again.",
+    routingPrompt: "To get you the right answer — which of these describes you?"
+  },
+
+  contacts: {
+    mainPhone: "780-420-6161",
+    applicantEmail: "help@civida.ca", /* §9.1: confirm vs civida@civida.ca with the manager */
+    benefitsEmail: "benefits@civida.ca",
+    generalEmail: "civida@civida.ca"
+  },
+
+  pages: {
+    districtOffices: "https://civida.ca/district-offices/",
+    contactUs: "https://civida.ca/contact-us/"
+  },
+
+  groups: [
+    {
+      id: "applicant",
+      label: "Applicant",
+      sublabel: "I've applied, or want to apply, for housing or a benefit",
+      contactText: "email help@civida.ca or call 780-420-6161",
+      contactLinks: [
+        { label: "Email help@civida.ca", url: "mailto:help@civida.ca" },
+        { label: "Call 780-420-6161", url: "tel:780-420-6161" }
+      ],
+      questions: [
+        {
+          id: "rent-help",
+          label: "How can I get help with my rent?",
+          answer: "You may be eligible for the Rent Assistance Benefit — it helps you afford rent with a private landlord. You apply through the Civida Benefit Portal.",
+          links: [
+            { label: "About Rent Assistance", url: "https://civida.ca/housing-programs/rent-assistance/" },
+            { label: "Apply — Civida Benefit Portal", url: "https://my.ppulus.com/civida" }
+          ]
+        },
+        {
+          id: "apply-housing",
+          label: "How do I apply for housing?",
+          answer: "You apply online through the Housing Applicant Portal (RentCafé). It's a good idea to check the eligibility rules first.",
+          links: [
+            { label: "Apply now", url: "https://civida.ca/apply-now/" },
+            { label: "Check eligibility", url: "https://civida.ca/housing-programs/eligibility/" }
+          ]
+        },
+        {
+          id: "no-response",
+          label: "I've applied but haven't heard back",
+          answer: "Your file will be reviewed. Civida uses a points-based priority list — not first-come, first-served — so wait times vary and can't be estimated. Someone will reach out when more information is needed. One tip: contact Civida at least once a year to keep your file active.",
+          links: [
+            { label: "Applicant FAQs", url: "https://civida.ca/housing-programs/applicant-faqs/" }
+          ]
+        },
+        {
+          id: "speak",
+          label: "I need to speak with someone",
+          answer: "You can call 780-420-6161. If you'd rather meet in person, you can book an appointment.",
+          links: [
+            { label: "Call 780-420-6161", url: "tel:780-420-6161" },
+            { label: "Make an appointment", url: "https://civida.ca/make-an-appointment/" }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "tenant",
+      label: "Tenant",
+      sublabel: "I'm a current Civida tenant",
+      contactText: "contact your District Office or call 780-420-6161",
+      contactLinks: [
+        { label: "Find my District Office", action: "district-picker" },
+        { label: "Call 780-420-6161", url: "tel:780-420-6161" }
+      ],
+      questions: [
+        {
+          id: "maintenance",
+          /* §9.2: no phone extension printed — sources disagree; confirm before adding one */
+          label: "I have a maintenance issue",
+          answer: "For repairs, contact your District Office. If it's a maintenance emergency, call 780-420-6161 — that line is answered 24/7.",
+          links: [
+            { label: "Find my District Office", action: "district-picker" },
+            { label: "Tenant maintenance responsibilities (PDF)", url: "https://civida.ca/wp-content/uploads/2021/02/Tenant-Maintenance-Responsibilities_INFO.pdf" }
+          ]
+        },
+        {
+          id: "rent-adjustment",
+          label: "I need a rent adjustment — my income changed",
+          answer: "Submit a Change of Income form to your District Office so your rent can be reviewed.",
+          links: [
+            { label: "Change of Income form — HS1 (PDF)", url: "https://civida.ca/wp-content/uploads/2024/01/HS1-Change-of-Income-Information-Form-2022-06.pdf" },
+            { label: "Find my District Office", action: "district-picker" }
+          ]
+        },
+        {
+          id: "transfer",
+          label: "I want to transfer / I need a bigger place",
+          answer: "Transfers are only arranged in emergency situations — an imminent, life-threatening situation.",
+          followUp: {
+            prompt: "Is this an emergency?",
+            options: [
+              {
+                label: "Yes",
+                answer: "Please complete the Emergency Transfer form and submit it to your District Office.",
+                links: [
+                  { label: "Emergency Transfer form — TM3 (PDF)", url: "https://civida.ca/wp-content/uploads/2024/01/TM3-Emergency-Transfer-2024.pdf" },
+                  { label: "Find my District Office", action: "district-picker" }
+                ]
+              },
+              {
+                label: "No",
+                answer: "Non-emergency transfers aren't available. Your District Office can tell you more about your options.",
+                links: [
+                  { label: "Find my District Office", action: "district-picker" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          id: "complaint",
+          label: "I have a complaint",
+          answer: "Complaints need to be in writing — by email, mail, or the office dropbox — with as much detail as possible, sent to your District Office.",
+          links: [
+            { label: "Find my District Office", action: "district-picker" }
+          ]
+        },
+        {
+          id: "which-district",
+          label: "What is my District Office?",
+          action: "district-picker"
+        }
+      ]
+    },
+
+    {
+      id: "recipient",
+      label: "Recipient",
+      sublabel: "I receive a rent-assistance benefit from Civida",
+      contactText: "email benefits@civida.ca",
+      contactLinks: [
+        { label: "Email benefits@civida.ca", url: "mailto:benefits@civida.ca" }
+      ],
+      questions: [
+        {
+          id: "deposit",
+          label: "When will I get my benefit?",
+          answer: "Your benefit is always deposited on or before the first business day of each month."
+        },
+        {
+          id: "annual-review",
+          label: "What do I need for my Annual Review?",
+          answer: "Log in to the Civida Benefit Portal, review your file, and upload two things: proof of rent (your current lease or renewal) and income verification (for example, your latest Notice of Assessment). For questions about your specific file, email benefits@civida.ca.",
+          links: [
+            { label: "Civida Benefit Portal", url: "https://my.ppulus.com/civida" },
+            { label: "Email benefits@civida.ca", url: "mailto:benefits@civida.ca" }
+          ]
+        },
+        {
+          id: "calculation",
+          label: "How was my benefit calculated? Why did it change?",
+          answer: "It's based on your total household income and the local market rent. The benefit is the difference between an affordable rent — 30% of your household income — and the market rent for your unit. As income rises, the benefit can go down."
+        },
+        {
+          id: "gbv",
+          /* §9.6: manager to decide if this path should carry a 24/7 safety
+             resource note — add it here if so. Tone: gentle, no judgment. */
+          label: "Can I reapply for the Gender-Based Violence (GBV) benefit?",
+          answer: "The GBV benefit is a one-time benefit, so it can't be received a second time. If you need ongoing support with rent, you're very welcome to apply for the Rent Assistance Benefit.",
+          links: [
+            { label: "About Rent Assistance", url: "https://civida.ca/housing-programs/rent-assistance/" },
+            { label: "Apply — Civida Benefit Portal", url: "https://my.ppulus.com/civida" }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "notsure",
+      label: "Not sure / something else",
+      sublabel: "I'm not sure which fits — or it's about something different",
+      contactText: "call 780-420-6161 or email civida@civida.ca",
+      contactLinks: [
+        { label: "Call 780-420-6161", url: "tel:780-420-6161" },
+        { label: "Email civida@civida.ca", url: "mailto:civida@civida.ca" }
+      ],
+      answer: "No problem — the Civida team can point you in the right direction.",
+      links: [
+        { label: "Call 780-420-6161", url: "tel:780-420-6161" },
+        { label: "Email civida@civida.ca", url: "mailto:civida@civida.ca" },
+        { label: "Contact us page", url: "https://civida.ca/contact-us/" }
+      ]
+    }
+  ],
+
+  /* District directory as of 2026-07-20 — offices open Tue/Thu/Fri 8:30 a.m.–4:00 p.m.
+     Exact emails live on the district-offices page (obfuscated to scraping). */
+  districts: [
+    { id: "A", office: "District A", location: "Parkdale ONE, 8315 113 Ave NW", phone: "780-851-7227", buildings: "Alliance Manor, Central Village, Flagstaff, Greystone Manor" },
+    { id: "B", office: "District B", location: "O-day'min Village, 10350 95 St NW", phone: "780-851-7322", buildings: "Ashton Apartments, McCauley, Montrose I, Queen Alexandra" },
+    { id: "C", office: "District C", location: "Ormsby Place II, 6250 180 St NW", phone: "780-851-7349", buildings: "Belmead I–III, Brander Gardens, Lymburn, Ormsby Place" },
+    { id: "D", office: "District D", location: "Duggan, #4 3716 105 St NW", phone: "780-851-7402", buildings: "Blue Quill, Duggan, Ekota, Saddleback, Yellowbird" },
+    { id: "E", office: "District E", location: "Lee Ridge I, 549 Millbourne Road East", phone: "780-851-7411", buildings: "Hillview, Kameyosek, Lee Ridge, Tweddle Place" },
+    { id: "F", office: "District F", location: "Lorelei VI, 16217 103 St NW", phone: "780-851-7419", buildings: "Caernarvon, Calder, Dunluce, Lorelei" },
+    { id: "G", office: "District G", closed: true, servedBy: "H", buildings: "Abbottsfield, Clareview, Rundle Heights" },
+    { id: "H", office: "District H", location: "Londonderry, 14544 72 St NW", phone: "780-851-9223", buildings: "Belvedere, Clareview V–VI, Steele Heights — plus former District G areas" }
+  ],
+
+  districtHours: "Open Tue / Thu / Fri, 8:30 a.m. to 4:00 p.m."
+};
+
+/* ============================================================
+   PURE LOGIC — no DOM in here (unit-tested via tests/core.test.mjs).
+   renderStep(content, loc) -> { messages: [{text, links?}], options: [...] }
+
+   loc variants:
+     {view:"routing", restart?}                      first prompt / start over
+     {view:"group", groupId}                         a group's question menu
+     {view:"answer", groupId, questionId}            a question's answer
+     {view:"followup", groupId, questionId, optionIndex}
+     {view:"escape", groupId}                        "talk to a person"
+     {view:"picker", groupId?}                       district picker
+     {view:"district", districtId, groupId?}         one office's card
+
+   option: {label, sublabel?, go?} navigates; {label, url} opens a link.
+   ============================================================ */
+var ESCAPE_LABEL = "Something else / talk to a person";
+
+function findGroup(content, id) {
+  return content.groups.find(function (g) { return g.id === id; });
+}
+function findQuestion(group, id) {
+  return (group.questions || []).find(function (q) { return q.id === id; });
+}
+function contactLine(group) {
+  return {
+    text: "Still need help? You can always " + group.contactText + ".",
+    links: group.contactLinks
+  };
+}
+function askAnother(groupId) {
+  return { label: "Ask another question", go: { view: "group", groupId: groupId } };
+}
+
+function renderStep(content, loc) {
+  var group = loc.groupId ? findGroup(content, loc.groupId) : null;
+
+  if (loc.view === "routing") {
+    return {
+      messages: [
+        { text: loc.restart ? content.meta.restart : content.meta.greeting },
+        { text: content.meta.routingPrompt }
+      ],
+      options: content.groups.map(function (g) {
+        return { label: g.label, sublabel: g.sublabel, go: { view: "group", groupId: g.id } };
+      })
+    };
+  }
+
+  if (loc.view === "group") {
+    if (!group.questions || !group.questions.length) {
+      /* direct-answer group ("Not sure / something else") */
+      return {
+        messages: [
+          { text: group.answer, links: group.links },
+          contactLine(group)
+        ],
+        options: [{ label: "Pick a different option", go: { view: "routing", restart: true } }]
+      };
+    }
+    return {
+      messages: [{ text: "Here's what I can help with — pick a question:" }],
+      options: group.questions.map(function (q) {
+        return { label: q.label, go: { view: "answer", groupId: group.id, questionId: q.id } };
+      }).concat([{ label: ESCAPE_LABEL, kind: "escape", go: { view: "escape", groupId: group.id } }])
+    };
+  }
+
+  if (loc.view === "answer") {
+    var q = findQuestion(group, loc.questionId);
+    if (q.action === "district-picker") {
+      return renderStep(content, { view: "picker", groupId: group.id });
+    }
+    if (q.followUp) {
+      return {
+        messages: [
+          { text: q.answer, links: q.links },
+          { text: q.followUp.prompt }
+        ],
+        options: q.followUp.options.map(function (o, i) {
+          return { label: o.label, go: { view: "followup", groupId: group.id, questionId: q.id, optionIndex: i } };
+        })
+      };
+    }
+    return {
+      messages: [{ text: q.answer, links: q.links }, contactLine(group)],
+      options: [askAnother(group.id)]
+    };
+  }
+
+  if (loc.view === "followup") {
+    var fq = findQuestion(group, loc.questionId);
+    var opt = fq.followUp.options[loc.optionIndex];
+    return {
+      messages: [{ text: opt.answer, links: opt.links }, contactLine(group)],
+      options: [askAnother(group.id)]
+    };
+  }
+
+  if (loc.view === "escape") {
+    return {
+      messages: [
+        { text: "No problem — here's how to reach a person:" },
+        { text: "You can " + group.contactText + ".", links: group.contactLinks }
+      ],
+      options: [askAnother(group.id)]
+    };
+  }
+
+  if (loc.view === "picker") {
+    return {
+      messages: [{ text: "Which area is your building in? Each district lists a few example buildings:" }],
+      options: content.districts.map(function (d) {
+        return {
+          label: d.closed ? d.office + " — now served by District " + d.servedBy : d.office,
+          sublabel: d.buildings,
+          go: { view: "district", districtId: d.id, groupId: loc.groupId }
+        };
+      }).concat([
+        { label: "Not sure — see the full list on civida.ca", url: content.pages.districtOffices }
+      ])
+    };
+  }
+
+  if (loc.view === "district") {
+    var d = content.districts.find(function (x) { return x.id === loc.districtId; });
+    var messages = [];
+    if (d.closed) {
+      messages.push({
+        text: d.office + " walk-in services are closed — you're now served by District " + d.servedBy + ":"
+      });
+      d = content.districts.find(function (x) { return x.id === d.servedBy; });
+    }
+    messages.push({
+      text: d.office + " — " + d.location + ". " + content.districtHours,
+      links: [
+        { label: "Call " + d.phone, url: "tel:" + d.phone },
+        { label: "District offices page (map + emails)", url: content.pages.districtOffices }
+      ]
+    });
+    var options = [{ label: "Pick a different district", go: { view: "picker", groupId: loc.groupId } }];
+    if (loc.groupId) options.push(askAnother(loc.groupId));
+    return { messages: messages, options: options };
+  }
+
+  throw new Error("Unknown view: " + loc.view);
+}
+</script>
+<script>
+/* ============================================================
+   DOM RENDERER — the only script that touches the page.
+   Content and flow rules live in the core script above.
+   ============================================================ */
+(function () {
+  var messagesEl = document.getElementById("messages");
+  var backBtn = document.getElementById("btn-back");
+  var restartBtn = document.getElementById("btn-restart");
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var history = [];          /* stack of locs; top = current step */
+  var busy = false;          /* true while bubbles are animating in */
+  var firstRender = true;
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function scrollToEnd() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function linkNode(link, groupId) {
+    if (link.action === "district-picker") {
+      var b = el("button", "link-pill", link.label);
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (!busy) choose(link.label, { view: "picker", groupId: groupId });
+      });
+      return b;
+    }
+    var a = el("a", "link-pill", link.label);
+    a.href = link.url;
+    if (/^https?:/.test(link.url)) {
+      a.target = "_blank";
+      a.rel = "noopener";
+    }
+    return a;
+  }
+
+  function bubbleNode(msg, groupId, isStepStart) {
+    var wrap = el("div", "msg msg-bot" + (isStepStart ? " step-start" : ""));
+    var bubble = el("div", "bubble");
+    bubble.appendChild(el("p", "bubble-text", msg.text));
+    if (msg.links && msg.links.length) {
+      var links = el("div", "bubble-links");
+      msg.links.forEach(function (l) { links.appendChild(linkNode(l, groupId)); });
+      bubble.appendChild(links);
+    }
+    wrap.appendChild(bubble);
+    return wrap;
+  }
+
+  function chipNode(label) {
+    var wrap = el("div", "msg msg-user");
+    wrap.appendChild(el("div", "chip", label));
+    return wrap;
+  }
+
+  function optionsNode(options, groupId) {
+    var row = el("div", "options");
+    row.tabIndex = -1;
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Choose an option");
+    options.forEach(function (o) {
+      var node;
+      if (o.url) {
+        node = el("a", "opt", "");
+        node.href = o.url;
+        node.target = "_blank";
+        node.rel = "noopener";
+      } else {
+        node = el("button", "opt", "");
+        node.type = "button";
+        node.addEventListener("click", function () {
+          if (!busy) choose(o.label, o.go);
+        });
+      }
+      if (o.kind === "escape") node.classList.add("opt-escape");
+      if (o.sublabel) node.classList.add("opt-card");
+      node.appendChild(el("span", "opt-label", o.label));
+      if (o.sublabel) node.appendChild(el("span", "opt-sub", o.sublabel));
+      row.appendChild(node);
+    });
+    return row;
+  }
+
+  function clearOptions() {
+    var old = messagesEl.querySelector(".options");
+    if (old) old.remove();
+  }
+
+  function renderLoc(loc) {
+    var step = renderStep(CONTENT, loc);
+    var delay = reduceMotion ? 0 : 220;
+    busy = true;
+    step.messages.forEach(function (m, i) {
+      setTimeout(function () {
+        messagesEl.appendChild(bubbleNode(m, loc.groupId, i === 0));
+        scrollToEnd();
+      }, delay * i);
+    });
+    setTimeout(function () {
+      var row = optionsNode(step.options, loc.groupId);
+      messagesEl.appendChild(row);
+      scrollToEnd();
+      if (!firstRender) row.focus({ preventScroll: true });
+      firstRender = false;
+      busy = false;
+    }, delay * step.messages.length);
+    backBtn.disabled = history.length <= 1;
+  }
+
+  function choose(label, loc) {
+    clearOptions();
+    messagesEl.appendChild(chipNode(label));
+    scrollToEnd();
+    history.push(loc);
+    renderLoc(loc);
+  }
+
+  backBtn.addEventListener("click", function () {
+    if (busy || history.length <= 1) return;
+    history.pop();
+    clearOptions();
+    messagesEl.appendChild(chipNode("‹ Back"));
+    renderLoc(history[history.length - 1]);
+  });
+
+  restartBtn.addEventListener("click", function () {
+    if (busy) return;
+    clearOptions();
+    messagesEl.appendChild(chipNode("⟲ Start over"));
+    history = [{ view: "routing", restart: true }];
+    renderLoc(history[0]);
+  });
+
+  history.push({ view: "routing" });
+  renderLoc(history[0]);
+})();
+</script>
+</body>
+</html>
