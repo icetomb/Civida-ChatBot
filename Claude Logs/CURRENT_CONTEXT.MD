@@ -10,63 +10,64 @@ A **customer-support chatbot for Civida** — Edmonton's largest provider of com
 affordable housing (civida.ca). Its purpose is to **deflect the redundant phone calls** the
 Customer Success team fields whose answers already live on the website, by identifying which
 customer group a visitor belongs to and then answering that group's most common questions with
-links to the right form, portal, or district office. **Nothing is built yet** — the repo is a
-fresh git repo; this session set up the logging system and gathered source context for planning.
+links to the right form, portal, or district office.
+
+## Locked decisions (this prototype)
+**Scripted decision tree** (buttons/menus, no runtime AI) · **static vanilla JS + HTML/CSS** ·
+**no backend** · **standalone prototype** · packaged as a **single self-contained `index.html`**
+(content inlined as a JS object so it opens by double-click — no server/CORS). Full spec:
+`Tasks/Civida-Chatbot-Prototype-Spec.md`.
 
 ## Routing model (the core interaction)
-The chat's **first question** classifies the user into one of three groups (the Customer
-Success manager's framing — *"have you applied for housing or the benefit, are you a Civida
-tenant, or do you receive a rental assistance benefit from Civida?"*):
-- **Applicant** — has applied (or wants to apply) for housing or a benefit.
+The chat's **first question** classifies the user (manager's framing):
+- **Applicant** — has applied / wants to apply for housing or a benefit.
 - **Tenant** — currently rents a Civida-managed home.
-- **Recipient** — receives a rental-assistance benefit (RAB / TRAB / GBV) from Civida.
-Each group then gets its own curated FAQ set. The manager supplied a starter list of the most
-common questions per group, the "easiest answer" (A), and a fallback contact
-(`help@civida.ca` / `benefits@civida.ca` / District Office / 780-420-6161).
+- **Recipient** — receives a rent-assistance benefit (RAB / TRAB / GBV).
+- **Not sure / something else** — routes to general help (780-420-6161 / civida@civida.ca).
+Each group then shows its curated questions; every group keeps a visible "talk to a person"
+escape hatch + Back / Start-over controls.
 
 ## Current branch
-`main` — initial commit only (`README.md`, 16 bytes). Everything from this session is
-**uncommitted / untracked** (the new `Claude Logs/` files). Rayan handles commits.
+`dev` (at `5a2720f` "New updates for claude logs"). The `Claude Logs/` system is already
+**committed**; **uncommitted right now:** `Tasks/Civida-Chatbot-Prototype-Spec.md` plus this
+session's `CURRENT_CONTEXT` / `SESSION_INDEX` / new-log updates. Rayan handles commits.
 
 ## Current active tasks
-1. **Chatbot planning — NOT STARTED (next up).** Decide scope, tech stack, where the FAQ
-   content lives, how routing/classification works, and how answers link out. No spec or plan
-   written yet — will live under `Tasks/`.
-2. **Logging system — SET UP THIS SESSION.** `Claude Logs/` now mirrors the RYCHEZT
-   (Financial-Model) reference: README, LOGGING_FORMAT, CURRENT_CONTEXT, SESSION_INDEX, logs/.
+1. **Prototype build — NOT STARTED (next up).** Build the single-file chatbot per
+   `Tasks/Civida-Chatbot-Prototype-Spec.md` §10 (scaffold chat UI → CONTENT object + tree-walker →
+   district picker + escape hatch → style → verify all paths).
+2. **Planning + spec — DONE (2026-07-20).** Decisions locked; civida.ca links + A–H district
+   directory gathered; per-group content drafted (paraphrased, pending CS sign-off).
 
-## Source material gathered (civida.ca, 2026-07-20)
-- **Six housing programs:** Community (Social) Housing, Near Market (Affordable), Mixed Income,
-  Rent Assistance Benefit (RAB) + Temporary (TRAB), Gender-Based Violence (GBV) Benefit, Women
-  Building Futures.
-- **Two separate portals** (a known confusion point a bot can clear up): **RentCafé** = Housing
-  Applicant Portal; **Civida Benefit Portal** (`my.ppulus.com/civida`) = rent-assistance
-  benefits. Applying for both = two separate applications.
-- Deep FAQ libraries already exist on-site for Applicants and Tenants (already Q&A-shaped — good
-  bot source material).
-- Deflection endpoints: 780-420-6161, `civida@civida.ca`, district offices, free translation via
-  Recite Me (web) + CanTalk (phone/in-person), 211 Alberta for emergencies.
+## Content & links (all captured in the spec)
+- Real form/page/portal URLs + the A–H district directory live in the spec §6–§7 (single source of
+  truth): apply-now (RentCafé), rent-assistance + Benefit Portal (`my.ppulus.com/civida`), tenant
+  PDFs (HS1/TM3/TM2/CM1/CM2/CM3 + handbook), district-offices, contacts.
+- Three groups' questions map 1:1 to the manager's curated list; one branch (Tenant → transfer →
+  "is this an emergency?").
 
 ## Open issues / things to watch
-- **No `/CLAUDE.md` yet** — the workflow's "read stable rules first" step has no target until
-  one is created (recommended during/after planning, once the stack is chosen).
-- FAQ answer content is not yet captured into the repo — only summarized in this session's log
-  and the manager's screenshots. A content model is a planning decision.
-- Group definitions can overlap (a tenant may also be a benefit recipient) — routing needs a
-  plan for multi-role users.
+- **Answer wording is DRAFT** — needs the CS manager's sign-off before anything goes live.
+- **6 open questions** to confirm (spec §9): applicant email `help@` vs `civida@`; maintenance
+  extension (sources disagree ext 1 vs 2); exact approved copy; branding assets OK to pull;
+  district picker vs link-out; whether the GBV path needs a sensitive safety note.
+- District office **emails not captured** (the web fetch obfuscated them) — grab exact emails +
+  addresses when building.
+- **No `/CLAUDE.md` yet** — create once the build starts.
+- **No analytics** (no backend) — the deflection metric returns with the future Flask phase.
+- Git indexes the context file as `CURRENT_CONTEXT.MD` (uppercase, from the initial commit); a
+  `git mv` to lowercase `.md` would match the reference (disk copy is already `.md`).
 
 ## Standing notes (operational facts)
-- Project root: `Civida-ChatBot/` containing `Claude Logs/` (this system) and `Tasks/` (empty;
-  will hold specs/plans). Note the folder name uses a **space** (`Claude Logs`), unlike the
-  reference's `Claude_Logs`.
-- Reference/"RYCHEZT" logging system lives in the connected `Financial-Model/Claude_Logs` — the
-  house style for logs is dense, honest, and verification-focused.
+- Project root: `Civida-ChatBot/` with `Claude Logs/` (this memory system) and `Tasks/` (now holds
+  the prototype spec). Folder name uses a **space** (`Claude Logs`) unlike the reference
+  `Claude_Logs`.
+- Reference/"RYCHEZT" logging system lives in the connected `Financial-Model/Claude_Logs`.
 
 ## Next recommended step
-1. Run a planning session: define the chatbot's scope, the group-routing flow, the FAQ content
-   model, and the tech stack; capture it under `Tasks/`.
-2. Create a root `CLAUDE.md` with stable project rules once the stack is decided.
-3. Begin development per the plan.
+1. Build the prototype from `Tasks/Civida-Chatbot-Prototype-Spec.md` (single `index.html`).
+2. Confirm the §9 open questions with the manager (can run in parallel — wording is draft anyway).
+3. Create a root `CLAUDE.md` when the build starts; commit `Tasks/` + the latest `Claude Logs/` updates.
 
 ## Last updated
-2026-07-20 (logging-system setup + civida.ca context-gathering; nothing built yet)
+2026-07-20 (planning complete; prototype spec written to `Tasks/`; build not started)
